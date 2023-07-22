@@ -63,127 +63,126 @@ ItemTypeDict = {"01_00_00_00": "Texture",
                 "01_05_00_00": "HSMData",
                 "01_07_00_00": "TrafficData"}
 
-Bnd2Path = sys.argv[1]
-OutputPath = Bnd2Path[:Bnd2Path.find(".")]
-Bnd2 = open(Bnd2Path, "rb").read().hex()
-Byte = Bnd2[8:16]
-if Byte == "05000100":
-    Game = "Need For Speed Most Wanted 2012"
-    Platform = "PC"
-elif Byte == "00050002":
-    Game = "Need For Speed Most Wanted 2012"
-    Platform = "PS3"
-elif Byte == "03000000":
-    Game = "Need For Speed Hot Pursuit 2010"
-    Platform = "PC"
-else:
-    Game = "Unknow"
-    Platform = "Unknow"
-    exit()
+Bnd2PathList = sys.argv[1:]
+for Bnd2Path in Bnd2PathList:
+    OutputPath = Bnd2Path[:Bnd2Path.find(".")]
+    Bnd2 = open(Bnd2Path, "rb").read().hex()
+    Byte = Bnd2[8:16]
+    if Byte == "05000100":
+        Game = "Need For Speed Most Wanted 2012"
+        Platform = "PC"
+    elif Byte == "00050002":
+        Game = "Need For Speed Most Wanted 2012"
+        Platform = "PS3"
+    elif Byte == "03000000":
+        Game = "Need For Speed Hot Pursuit 2010"
+        Platform = "PC"
+    else:
+        Game = "Unknow"
+        Platform = "Unknow"
+        exit()
 
-if Game == "Need For Speed Most Wanted 2012" and Platform == "PC":
-    ItemCount = struct.unpack("<L", bytes.fromhex(Bnd2[24:32]))[0]
-    ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[32:40]))[0]
-    Block1AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[40:48]))[0]
-    Block2AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[48:56]))[0]
-    #Block3AreaOffset = struct.unpack("<L", bytes.fromhex(Bndl[56:64]))[0]
-    #BndlSize = struct.unpack("<L", bytes.fromhex(Bndl[64:72]))[0]
-    CompressionLevel = struct.unpack("<L", bytes.fromhex(Bnd2[72:80]))[0]
-    for ItemNum in range(ItemCount):
-        Offset = (ItemInfoAreaOffset + 72 * ItemNum) * 2
-        ItemName = Bnd2[Offset:Offset + 8].upper()
-        ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
-        ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 8:Offset + 10]))[0]
-        ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 12:Offset + 14]))[0]
-        if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
-            ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
-        elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
-            ItemName += "_0_" + str(ItemNameSuffix2)
-        elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
-            ItemName += "_" + str(ItemNameSuffix1)
-        DecompressionSize1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 16:Offset + 22] + "00"))[0]
-        DecompressionSize2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 24:Offset + 30] + "00"))[0]
-        CompressionSize1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 48:Offset + 56]))[0]
-        CompressionSize2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 56:Offset + 64]))[0]
-        Offset1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 80:Offset + 88]))[0]
-        Offset2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 88:Offset + 96]))[0]
-        ItemType = Bnd2[Offset + 120:Offset + 128].upper()
-        ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
-        if OutputNewFileType == True:
-            ItemType = ItemTypeDict[ItemType]
-        CompressData1 = bytes.fromhex(Bnd2[(Block1AreaOffset + Offset1) * 2:(Block1AreaOffset + Offset1 + CompressionSize1) * 2])
-        DecompressData1 = zlib.decompressobj().decompress(CompressData1)
-        OutputTypePath = OutputPath + "\\" + ItemType
-        if not os.path.exists(OutputTypePath):
-            os.makedirs(OutputTypePath)
-        Output = open(OutputTypePath + "\\" + ItemName + ".dat", "wb")
-        Output.write(DecompressData1)
-        Output.close()
-        if DecompressionSize2 != 0:
-            CompressData2 = bytes.fromhex(Bnd2[(Block2AreaOffset + Offset2) * 2:(Block2AreaOffset + Offset2 + CompressionSize2) * 2])
-            DecompressData2 = zlib.decompressobj().decompress(CompressData2)
-            if ItemType == "05_00_00_00" or ItemType == "Renderable":
-                Output = open(OutputTypePath + "\\" + ItemName + "_model.dat", "wb")
-            elif ItemType == "01_00_00_00" or ItemType == "Texture":
-                Output = open(OutputTypePath + "\\" + ItemName + "_texture.dat", "wb")
-            else:
-                Output = open(OutputTypePath + "\\" + ItemName + "_unknow.dat", "wb")
-            Output.write(DecompressData2)
+    if Game == "Need For Speed Most Wanted 2012" and Platform == "PC":
+        ItemCount = struct.unpack("<L", bytes.fromhex(Bnd2[24:32]))[0]
+        ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[32:40]))[0]
+        MainFileBlockAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[40:48]))[0]
+        SubBlockAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[48:56]))[0]
+        CompressionLevel = struct.unpack("<L", bytes.fromhex(Bnd2[72:80]))[0]
+        for ItemNum in range(ItemCount):
+            Offset = (ItemInfoAreaOffset + 72 * ItemNum) * 2
+            ItemName = Bnd2[Offset:Offset + 8].upper()
+            ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
+            ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 8:Offset + 10]))[0]
+            ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 12:Offset + 14]))[0]
+            if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
+                ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
+            elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
+                ItemName += "_0_" + str(ItemNameSuffix2)
+            elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
+                ItemName += "_" + str(ItemNameSuffix1)
+            MainFileDecompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 16:Offset + 22] + "00"))[0]
+            SubFileDecompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 24:Offset + 30] + "00"))[0]
+            MainFileCompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 48:Offset + 56]))[0]
+            SubFileCompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 56:Offset + 64]))[0]
+            MainFileBlockOffset = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 80:Offset + 88]))[0]
+            SubFileBlockOffset = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 88:Offset + 96]))[0]
+            ItemType = Bnd2[Offset + 120:Offset + 128].upper()
+            ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
+            if OutputNewFileType == True:
+                ItemType = ItemTypeDict[ItemType]
+            CompressData1 = bytes.fromhex(Bnd2[(MainFileBlockAreaOffset + MainFileBlockOffset) * 2:(MainFileBlockAreaOffset + MainFileBlockOffset + MainFileCompressionSize) * 2])
+            DecompressData1 = zlib.decompressobj().decompress(CompressData1)
+            OutputTypePath = OutputPath + "\\" + ItemType
+            if not os.path.exists(OutputTypePath):
+                os.makedirs(OutputTypePath)
+            Output = open(OutputTypePath + "\\" + ItemName + ".dat", "wb")
+            Output.write(DecompressData1)
             Output.close()
-    IDs = bytes.fromhex(Bnd2[:Block1AreaOffset * 2])
-    Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
-    Output.write(IDs)
-    Output.close()
-elif Game == "Need For Speed Hot Pursuit 2010" and Platform == "PC":
-    ItemCount = struct.unpack("<L", bytes.fromhex(Bnd2[32:40]))[0]
-    ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[40:48]))[0]
-    Block1AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[48:56]))[0]
-    Block2AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[56:64]))[0]
-    Block3AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[64:72]))[0]
-    Block4AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[72:80]))[0]
-    CompressionLevel = struct.unpack("<L", bytes.fromhex(Bnd2[80:88]))[0]
-    for ItemNum in range(ItemCount):
-        Offset = (ItemInfoAreaOffset + 80 * ItemNum) * 2
-        ItemName = Bnd2[Offset:Offset + 8].upper()
-        ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
-        ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 8:Offset + 10]))[0]
-        ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 12:Offset + 14]))[0]
-        DecompressionSize1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 32:Offset + 38] + "00"))[0]
-        DecompressionSize2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 40:Offset + 46] + "00"))[0]
-        CompressionSize1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 64:Offset + 72]))[0]
-        CompressionSize2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 72:Offset + 80]))[0]
-        Offset1 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 96:Offset + 104]))[0]
-        Offset2 = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 104:Offset + 112]))[0]
-        ItemType = Bnd2[Offset + 136:Offset + 144].upper()
-        ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
-        if OutputNewFileType == True:
-            ItemType = ItemTypeDict[ItemType]
-        if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
-            ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
-        elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
-            ItemName += "_0_" + str(ItemNameSuffix2)
-        elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
-            ItemName += "_" + str(ItemNameSuffix1)
-        CompressData1 = bytes.fromhex(Bnd2[(Block1AreaOffset + Offset1) * 2:(Block1AreaOffset + Offset1 + CompressionSize1) * 2])
-        DecompressData1 = zlib.decompressobj().decompress(CompressData1)
-        OutputTypePath = OutputPath + "\\" + ItemType
-        if not os.path.exists(OutputTypePath):
-            os.makedirs(OutputTypePath)
-        Output = open(OutputTypePath + "\\" + ItemName + ".dat", "wb")
-        Output.write(DecompressData1)
+            if SubFileDecompressionSize != 0:
+                SubFileCompressData = bytes.fromhex(Bnd2[(SubBlockAreaOffset + SubFileBlockOffset) * 2:(SubBlockAreaOffset + SubFileBlockOffset + SubFileCompressionSize) * 2])
+                SubFileDecompressData = zlib.decompressobj().decompress(SubFileCompressData)
+                if ItemType == "05_00_00_00" or ItemType == "Renderable":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_model.dat", "wb")
+                elif ItemType == "01_00_00_00" or ItemType == "Texture":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_texture.dat", "wb")
+                else:
+                    Output = open(OutputTypePath + "\\" + ItemName + "_unknow.dat", "wb")
+                Output.write(SubFileDecompressData)
+                Output.close()
+        IDs = bytes.fromhex(Bnd2[:MainFileBlockAreaOffset * 2])
+        Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
+        Output.write(IDs)
         Output.close()
-        if DecompressionSize2 != 0:
-            CompressData2 = bytes.fromhex(Bnd2[(Block2AreaOffset + Offset2) * 2:(Block2AreaOffset + Offset2 + CompressionSize2) * 2])
-            DecompressData2 = zlib.decompressobj().decompress(CompressData2)
-            if ItemType == "05_00_00_00" or ItemType == "Renderable":
-                Output = open(OutputTypePath + "\\" + ItemName + "_model.dat", "wb")
-            elif ItemType == "01_00_00_00" or ItemType == "Texture":
-                Output = open(OutputTypePath + "\\" + ItemName + "_texture.dat", "wb")
-            else:
-                Output = open(OutputTypePath + "\\" + ItemName + "_unknow.dat", "wb")
-            Output.write(DecompressData2)
+    elif Game == "Need For Speed Hot Pursuit 2010" and Platform == "PC":
+        ItemCount = struct.unpack("<L", bytes.fromhex(Bnd2[32:40]))[0]
+        ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[40:48]))[0]
+        MainFileBlockAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[48:56]))[0]
+        SubBlockAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[56:64]))[0]
+        Block3AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[64:72]))[0]
+        Block4AreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[72:80]))[0]
+        CompressionLevel = struct.unpack("<L", bytes.fromhex(Bnd2[80:88]))[0]
+        for ItemNum in range(ItemCount):
+            Offset = (ItemInfoAreaOffset + 80 * ItemNum) * 2
+            ItemName = Bnd2[Offset:Offset + 8].upper()
+            ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
+            ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 8:Offset + 10]))[0]
+            ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(Bnd2[Offset + 12:Offset + 14]))[0]
+            MainFileDecompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 32:Offset + 38] + "00"))[0]
+            SubFileDecompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 40:Offset + 46] + "00"))[0]
+            MainFileCompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 64:Offset + 72]))[0]
+            SubFileCompressionSize = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 72:Offset + 80]))[0]
+            MainFileBlockOffset = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 96:Offset + 104]))[0]
+            SubFileBlockOffset = struct.unpack("<L", bytes.fromhex(Bnd2[Offset + 104:Offset + 112]))[0]
+            ItemType = Bnd2[Offset + 136:Offset + 144].upper()
+            ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
+            if OutputNewFileType == True:
+                ItemType = ItemTypeDict[ItemType]
+            if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
+                ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
+            elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
+                ItemName += "_0_" + str(ItemNameSuffix2)
+            elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
+                ItemName += "_" + str(ItemNameSuffix1)
+            CompressData1 = bytes.fromhex(Bnd2[(MainFileBlockAreaOffset + MainFileBlockOffset) * 2:(MainFileBlockAreaOffset + MainFileBlockOffset + MainFileCompressionSize) * 2])
+            DecompressData1 = zlib.decompressobj().decompress(CompressData1)
+            OutputTypePath = OutputPath + "\\" + ItemType
+            if not os.path.exists(OutputTypePath):
+                os.makedirs(OutputTypePath)
+            Output = open(OutputTypePath + "\\" + ItemName + ".dat", "wb")
+            Output.write(DecompressData1)
             Output.close()
-    IDs = bytes.fromhex(Bnd2[:Block1AreaOffset * 2])
-    Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
-    Output.write(IDs)
-    Output.close()
+            if SubFileDecompressionSize != 0:
+                SubFileCompressData = bytes.fromhex(Bnd2[(SubBlockAreaOffset + SubFileBlockOffset) * 2:(SubBlockAreaOffset + SubFileBlockOffset + SubFileCompressionSize) * 2])
+                SubFileDecompressData = zlib.decompressobj().decompress(SubFileCompressData)
+                if ItemType == "05_00_00_00" or ItemType == "Renderable":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_model.dat", "wb")
+                elif ItemType == "01_00_00_00" or ItemType == "Texture":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_texture.dat", "wb")
+                else:
+                    Output = open(OutputTypePath + "\\" + ItemName + "_unknow.dat", "wb")
+                Output.write(SubFileDecompressData)
+                Output.close()
+        IDs = bytes.fromhex(Bnd2[:MainFileBlockAreaOffset * 2])
+        Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
+        Output.write(IDs)
+        Output.close()

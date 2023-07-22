@@ -61,76 +61,86 @@ ItemTypeDict = {"01_00_00_00": "Texture",
                 "01_05_00_00": "HSMData",
                 "01_07_00_00": "TrafficData"}
 
-InputPath = r"C:\Users\Administrator\Desktop\122699"
-IDsPath = InputPath + "\\" + "IDs.BIN"
-IDs = open(IDsPath, "rb").read().hex()
-Byte = IDs[8:16]
-if Byte == "05000100":
-    Game = "Need For Speed Most Wanted 2012"
-    Platform = "PC"
-elif Byte == "00050002":
-    Game = "Need For Speed Most Wanted 2012"
-    Platform = "PS3"
-elif Byte == "03000000":
-    Game = "Need For Speed Hot Pursuit 2010"
-    Platform = "PC"
-else:
-    Game = "Unknow"
-    Platform = "Unknow"
-    exit()
 
-NewIDs = str()
-Block1 = str()
-Block2 = str()
+InputPathList = sys.argv[1:]
+for InputPath in InputPathList:
+    IDsPath = InputPath + "\\" + "IDs.BIN"
+    IDs = open(IDsPath, "rb").read().hex()
+    ItemInfoArea = IDs[224:]
+    Byte = IDs[8:16]
+    if Byte == "05000100":
+        Game = "Need For Speed Most Wanted 2012"
+        Platform = "PC"
+    elif Byte == "00050002":
+        Game = "Need For Speed Most Wanted 2012"
+        Platform = "PS3"
+    elif Byte == "03000000":
+        Game = "Need For Speed Hot Pursuit 2010"
+        Platform = "PC"
+    else:
+        Game = "Unknow"
+        Platform = "Unknow"
+        exit()
 
-ItemCount = (len(IDs) // 2 - 112) // 72
-ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(IDs[32:40]))[0]
-Block1AreaOffset = struct.unpack("<L", bytes.fromhex(IDs[40:48]))[0]
-#Block2AreaOffset = struct.unpack("<L", bytes.fromhex(IDs[48:56]))[0]
-CompressionLevel = struct.unpack("<L", bytes.fromhex(IDs[72:80]))[0]
-for ItemNum in range(ItemCount):
-    Offset = (ItemInfoAreaOffset + 72 * ItemNum) * 2
-    ItemName = IDs[Offset:Offset + 8].upper()
-    ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
-    ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(IDs[Offset + 8:Offset + 10]))[0]
-    ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(IDs[Offset + 12:Offset + 14]))[0]
-    if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
-        ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
-    elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
-        ItemName += "_0_" + str(ItemNameSuffix2)
-    elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
-        ItemName += "_" + str(ItemNameSuffix1)
-    #DecompressionSize1 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 16:Offset + 22] + "00"))[0]
-    #DecompressionSize2 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 24:Offset + 30] + "00"))[0]
-    #CompressionSize1 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 48:Offset + 56]))[0]
-    #CompressionSize2 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 56:Offset + 64]))[0]
-    #Offset1 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 80:Offset + 88]))[0]
-    #Offset2 = struct.unpack("<L", bytes.fromhex(IDs[Offset + 88:Offset + 96]))[0]
-    ItemType = IDs[Offset + 120:Offset + 128].upper()
-    ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
-    try:
-        ItemType = ItemTypeDict[ItemType]
-    except:
-        pass
-    ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + ".dat"
-    Item = open(ItemPath, "rb").read()
-    DecompressionSize1 = len(Item) // 2
-    CompressData1 = zlib.compress(Item, CompressionLevel).hex()
-    CompressionSize1 = len(CompressData1) // 2
-    Block1 += CompressData1
-    if ItemType == "Renderable":
-        ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + "_model.dat"
+    IDsHeader = str()
+    NewItemInfoArea = str()
+    MainFileBlock = str()
+    SubFileBlock = str()
+
+    ItemCount = len(ItemInfoArea) // 144
+    ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(IDs[32:40]))[0]
+    MainFileBlockAreaOffset = struct.unpack("<L", bytes.fromhex(IDs[40:48]))[0]
+    CompressionLevel = struct.unpack("<L", bytes.fromhex(IDs[72:80]))[0]
+    for ItemNum in range(ItemCount):
+        Offset = (ItemInfoAreaOffset + 72 * ItemNum) * 2
+        ItemName = IDs[Offset:Offset + 8].upper()
+        ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
+        ItemNameSuffix1 = struct.unpack("<B", bytes.fromhex(IDs[Offset + 8:Offset + 10]))[0]
+        ItemNameSuffix2 = struct.unpack("<B", bytes.fromhex(IDs[Offset + 12:Offset + 14]))[0]
+        if ItemNameSuffix1 != 0 and ItemNameSuffix2 != 0:
+            ItemName += "_" + str(ItemNameSuffix1) + "_" + str(ItemNameSuffix2)
+        elif ItemNameSuffix1 == 0 and ItemNameSuffix2 != 0:
+            ItemName += "_0_" + str(ItemNameSuffix2)
+        elif ItemNameSuffix1 != 0 and ItemNameSuffix2 == 0:
+            ItemName += "_" + str(ItemNameSuffix1)
+        ItemType = IDs[Offset + 120:Offset + 128].upper()
+        ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
+        try:
+            ItemType = ItemTypeDict[ItemType]
+        except:
+            pass
+        ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + ".dat"
         Item = open(ItemPath, "rb").read()
-        DecompressionSize2 = len(Item) // 2
-        CompressData2 = zlib.compress(Item, CompressionLevel).hex()
-        CompressionSize2 = len(CompressData2) // 2
-        Block2 += CompressData2
-    elif ItemType == "Texture":
-        ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + "_texture.dat"
-        Item = open(ItemPath, "rb").read()
-        DecompressionSize2 = len(Item) // 2
-        CompressData2 = zlib.compress(Item, CompressionLevel).hex()
-        CompressionSize2 = len(CompressData2) // 2
-        Block2 += CompressData2
-print(len(Block1) // 2)
-print(len(Block2) // 2)
+        MainFileDecompressionSize = len(Item)
+        MainFileCompressData = zlib.compress(Item, CompressionLevel).hex()
+        MainFileCompressionSize = len(MainFileCompressData) // 2
+        MainFileBlockOffset = len(MainFileBlock) // 2
+        MainFileBlock += MainFileCompressData
+        if ItemType == "Renderable":
+            ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + "_model.dat"
+            Item = open(ItemPath, "rb").read()
+            SubFileDecompressionSize = len(Item)
+            SubFileCompressData = zlib.compress(Item, CompressionLevel).hex()
+            SubFileCompressionSize = len(SubFileCompressData) // 2
+            SubFileBlockOffset = len(SubFileBlock) // 2
+            NewItemInfoArea += ItemInfoArea[ItemNum * 144:ItemNum * 144 + 16] + struct.pack("<L", MainFileDecompressionSize).hex() + struct.pack("<L", SubFileDecompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 32:ItemNum * 144 + 48] + struct.pack("<L", MainFileCompressionSize).hex() + struct.pack("<L", SubFileCompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 64:ItemNum * 144 + 80] + struct.pack("<L", MainFileBlockOffset).hex() + struct.pack("<L", SubFileBlockOffset).hex() + ItemInfoArea[ItemNum * 144 + 96:ItemNum * 144 + 144]
+            SubFileBlock += SubFileCompressData
+        elif ItemType == "Texture":
+            ItemPath = InputPath + "\\" + ItemType + "\\" + ItemName + "_texture.dat"
+            Item = open(ItemPath, "rb").read()
+            SubFileDecompressionSize = len(Item)
+            SubFileCompressData = zlib.compress(Item, CompressionLevel).hex()
+            SubFileCompressionSize = len(SubFileCompressData) // 2
+            SubFileBlockOffset = len(SubFileBlock) // 2
+            NewItemInfoArea += ItemInfoArea[ItemNum * 144:ItemNum * 144 + 16] + struct.pack("<L", MainFileDecompressionSize).hex() + struct.pack("<L", SubFileDecompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 32:ItemNum * 144 + 48] + struct.pack("<L", MainFileCompressionSize).hex() + struct.pack("<L", SubFileCompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 64:ItemNum * 144 + 80] + struct.pack("<L", MainFileBlockOffset).hex() + struct.pack("<L", SubFileBlockOffset).hex() + ItemInfoArea[ItemNum * 144 + 96:ItemNum * 144 + 144]
+            SubFileBlock += SubFileCompressData
+        else:
+            SubFileDecompressionSize = "00000000"
+            SubFileBlockOffset = "00000000"
+            NewItemInfoArea += ItemInfoArea[ItemNum * 144:ItemNum * 144 + 16] + struct.pack("<L", MainFileDecompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 24:ItemNum * 144 + 48] + struct.pack("<L", MainFileCompressionSize).hex() + ItemInfoArea[ItemNum * 144 + 56:ItemNum * 144 + 80] + struct.pack("<L", MainFileBlockOffset).hex() + ItemInfoArea[ItemNum * 144 + 88:ItemNum * 144 + 144]
+    IDsHeader = IDs[:24] + struct.pack("<L", ItemCount).hex() + IDs[32:40] + struct.pack("<L", len(NewItemInfoArea) // 2 + 112).hex() + struct.pack("<L", len(NewItemInfoArea + MainFileBlock) // 2 + 112).hex() + struct.pack("<L", len(NewItemInfoArea + MainFileBlock + SubFileBlock) // 2 + 112).hex() + struct.pack("<L", len(NewItemInfoArea + MainFileBlock + SubFileBlock) // 2 + 112).hex() + IDs[72:224]
+    BndlName = os.path.basename(os.path.dirname(IDsPath))
+    BndlOutputPath = os.path.dirname(os.path.dirname(IDsPath)) + "\\" + BndlName + ".BNDL"
+    Bndl = open(BndlOutputPath, "wb")
+    Bndl.write(bytes.fromhex(IDsHeader + NewItemInfoArea + MainFileBlock + SubFileBlock))
+    Bndl.close()
