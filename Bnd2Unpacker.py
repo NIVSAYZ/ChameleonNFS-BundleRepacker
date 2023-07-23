@@ -133,6 +133,57 @@ for Bnd2Path in Bnd2PathList:
         Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
         Output.write(IDs)
         Output.close()
+    if Game == "Need For Speed Most Wanted 2012" and Platform == "PS3":
+        ItemCount = struct.unpack(">L", bytes.fromhex(Bnd2[24:32]))[0]
+        ItemInfoAreaOffset = struct.unpack(">L", bytes.fromhex(Bnd2[32:40]))[0]
+        MainFileBlockAreaOffset = struct.unpack(">L", bytes.fromhex(Bnd2[40:48]))[0]
+        SubBlockAreaOffset = struct.unpack(">L", bytes.fromhex(Bnd2[48:56]))[0]
+        CompressionLevel = struct.unpack(">L", bytes.fromhex(Bnd2[72:80]))[0]
+        for ItemNum in range(ItemCount):
+            Offset = (ItemInfoAreaOffset + 72 * ItemNum) * 2
+            ItemName = Bnd2[Offset + 8:Offset + 16].upper()
+            ItemName = '_'.join([ItemName[x:x + 2] for x in range(0, len(ItemName), 2)])
+            ItemNameSuffix1 = struct.unpack(">B", bytes.fromhex(Bnd2[Offset + 2:Offset + 4]))[0]
+            ItemNameSuffix2 = struct.unpack(">B", bytes.fromhex(Bnd2[Offset + 6:Offset + 8]))[0]
+            if ItemNameSuffix2 != 0 and ItemNameSuffix1 != 0:
+                ItemName += "_" + str(ItemNameSuffix2) + "_" + str(ItemNameSuffix1)
+            elif ItemNameSuffix2 == 0 and ItemNameSuffix1 != 0:
+                ItemName += "_0_" + str(ItemNameSuffix1)
+            elif ItemNameSuffix2 != 0 and ItemNameSuffix1 == 0:
+                ItemName += "_" + str(ItemNameSuffix2)
+            MainFileDecompressionSize = struct.unpack(">L", bytes.fromhex("00" + Bnd2[Offset + 18:Offset + 24]))[0]
+            SubFileDecompressionSize = struct.unpack(">L", bytes.fromhex("00" + Bnd2[Offset + 34:Offset + 40]))[0]
+            MainFileCompressionSize = struct.unpack(">L", bytes.fromhex(Bnd2[Offset + 48:Offset + 56]))[0]
+            SubFileCompressionSize = struct.unpack(">L", bytes.fromhex(Bnd2[Offset + 64:Offset + 72]))[0]
+            MainFileBlockOffset = struct.unpack(">L", bytes.fromhex(Bnd2[Offset + 80:Offset + 88]))[0]
+            SubFileBlockOffset = struct.unpack(">L", bytes.fromhex(Bnd2[Offset + 96:Offset + 104]))[0]
+            ItemType = Bnd2[Offset + 120:Offset + 128].upper()
+            ItemType = '_'.join([ItemType[x:x + 2] for x in range(0, len(ItemType), 2)])
+            if OutputNewFileType == True:
+                ItemType = ItemTypeDict[ItemType[9:11] + "_" + ItemType[6:8] + "_" + ItemType[3:5] + "_" + ItemType[:2]]
+            CompressData1 = bytes.fromhex(Bnd2[(MainFileBlockAreaOffset + MainFileBlockOffset) * 2:(MainFileBlockAreaOffset + MainFileBlockOffset + MainFileCompressionSize) * 2])
+            DecompressData1 = zlib.decompressobj().decompress(CompressData1)
+            OutputTypePath = OutputPath + "\\" + ItemType
+            if not os.path.exists(OutputTypePath):
+                os.makedirs(OutputTypePath)
+            Output = open(OutputTypePath + "\\" + ItemName + ".dat", "wb")
+            Output.write(DecompressData1)
+            Output.close()
+            if SubFileDecompressionSize != 0:
+                SubFileCompressData = bytes.fromhex(Bnd2[(SubBlockAreaOffset + SubFileBlockOffset) * 2:(SubBlockAreaOffset + SubFileBlockOffset + SubFileCompressionSize) * 2])
+                SubFileDecompressData = zlib.decompressobj().decompress(SubFileCompressData)
+                if ItemType == "00_00_00_05" or ItemType == "Renderable":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_model.dat", "wb")
+                elif ItemType == "00_00_00_01" or ItemType == "Texture":
+                    Output = open(OutputTypePath + "\\" + ItemName + "_texture.dat", "wb")
+                else:
+                    Output = open(OutputTypePath + "\\" + ItemName + "_unknow.dat", "wb")
+                Output.write(SubFileDecompressData)
+                Output.close()
+        IDs = bytes.fromhex(Bnd2[:MainFileBlockAreaOffset * 2])
+        Output = open(OutputPath + "\\" + "IDs.BIN", "wb")
+        Output.write(IDs)
+        Output.close()
     elif Game == "Need For Speed Hot Pursuit 2010" and Platform == "PC":
         ItemCount = struct.unpack("<L", bytes.fromhex(Bnd2[32:40]))[0]
         ItemInfoAreaOffset = struct.unpack("<L", bytes.fromhex(Bnd2[40:48]))[0]
