@@ -92,7 +92,7 @@ ResourceTypeDict = {"01_00_00_00": "Texture",
                     "01_07_00_00": "TrafficLaneData"}
 
 BundlePathList = sys.argv[1:]
-BundlePathList = [r"C:\Users\Administrator\Desktop\VEH_97331_MS.BIN"]
+BundlePathList = [r"C:\Users\Administrator\Desktop\VEH_122672_FE.BNDL"]
 for BundlePath in BundlePathList:
     ExportPath = BundlePath[:BundlePath.find(".")]
     Bundle = open(BundlePath, "rb").read().hex()
@@ -191,6 +191,20 @@ for BundlePath in BundlePathList:
         Output = open(ExportPath + "\\" + "IDs.BIN", "wb")
         Output.write(IDs)
         Output.close()
+        if DebugDataOffset != 0:
+            DebugDataList = list()
+            DebugDataXml = open(ExportPath + "\\" + "ResourceStringTable.xml", "w")
+            Length = len(Bundle) // 2 - DebugDataOffset
+            for Offset in range(Length):
+                Byte = Bundle[(DebugDataOffset + Offset) * 2:(DebugDataOffset + 1 + Offset) * 2]
+                if Byte == "0a":
+                    DebugDataList.append("\n")
+                elif Byte == "09":
+                    DebugDataList.append("	")
+                else:
+                    DebugDataList.append(chr(struct.unpack("<B", bytes.fromhex(Byte))[0]))
+        DebugDataXml.write("".join(DebugDataList))
+        DebugDataXml.close()
     elif Game == "Need For Speed Most Wanted 2012" and Platform == "PS3":
         DebugDataOffset = struct.unpack(">L", bytes.fromhex(Bundle[16:24]))[0]
         ResourceEntriesCount = struct.unpack(">L", bytes.fromhex(Bundle[24:32]))[0]
@@ -203,28 +217,31 @@ for BundlePath in BundlePathList:
         DefaultResourceId = struct.unpack(">L", bytes.fromhex(Bundle[72:80]))[0]
         for ResourceEntriesNum in range(ResourceEntriesCount):
             Offset = (ResourceEntriesOffset + 72 * ResourceEntriesNum) * 2
-            ResourceId = Bundle[Offset:Offset + 8].upper()
+            ResourceId = Bundle[Offset + 8:Offset + 16].upper()
             ResourceId = '_'.join([ResourceId[x:x + 2] for x in range(0, len(ResourceId), 2)])
-            ResourceIdSuffix1 = struct.unpack(">B", bytes.fromhex(Bundle[Offset + 8:Offset + 10]))[0]
-            ResourceIdSuffix2 = struct.unpack(">B", bytes.fromhex(Bundle[Offset + 12:Offset + 14]))[0]
+            ResourceIdSuffix1 = struct.unpack(">B", bytes.fromhex(Bundle[Offset + 2:Offset + 4]))[0]
+            ResourceIdSuffix2 = struct.unpack(">B", bytes.fromhex(Bundle[Offset + 6:Offset + 8]))[0]
             if ResourceIdSuffix2 != 0 and ResourceIdSuffix1 != 0:
                 ResourceId += "_" + str(ResourceIdSuffix1) + "_" + str(ResourceIdSuffix1)
             elif ResourceIdSuffix2 == 0 and ResourceIdSuffix1 != 0:
                 ResourceId += "_0_" + str(ResourceIdSuffix1)
             elif ResourceIdSuffix2 != 0 and ResourceIdSuffix1 == 0:
                 ResourceId += "_" + str(ResourceIdSuffix2)
-            UncompressedSizeAndAlignment1 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 16:Offset + 22] + "00"))[0]
-            UncompressedSizeAndAlignment2 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 24:Offset + 30] + "00"))[0]
-            UncompressedSizeAndAlignment3 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 32:Offset + 38] + "00"))[0]
-            UncompressedSizeAndAlignment4 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 40:Offset + 46] + "00"))[0]
+            UncompressedSizeAndAlignment1 = struct.unpack(">L", bytes.fromhex("00" + Bundle[Offset + 18:Offset + 24]))[0]
+            UncompressedSizeAndAlignment2 = struct.unpack(">L", bytes.fromhex("00" + Bundle[Offset + 26:Offset + 32]))[0]
+            UncompressedSizeAndAlignment3 = struct.unpack(">L", bytes.fromhex("00" + Bundle[Offset + 34:Offset + 40]))[0]
+            UncompressedSizeAndAlignment4 = struct.unpack(">L", bytes.fromhex("00" + Bundle[Offset + 42:Offset + 48]))[0]
+            #print(UncompressedSizeAndAlignment1, UncompressedSizeAndAlignment2, UncompressedSizeAndAlignment3, UncompressedSizeAndAlignment4)
             SizeAndAlignmentOnDisk1 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 48:Offset + 56]))[0]
             SizeAndAlignmentOnDisk2 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 56:Offset + 64]))[0]
             SizeAndAlignmentOnDisk3 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 64:Offset + 72]))[0]
             SizeAndAlignmentOnDisk4 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 72:Offset + 80]))[0]
+            #print(SizeAndAlignmentOnDisk1, SizeAndAlignmentOnDisk2, SizeAndAlignmentOnDisk3, SizeAndAlignmentOnDisk4)
             DiskOffset1 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 80:Offset + 88]))[0]
             DiskOffset2 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 88:Offset + 96]))[0]
             DiskOffset3 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 96:Offset + 104]))[0]
             DiskOffset4 = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 104:Offset + 112]))[0]
+            #print(DiskOffset1, DiskOffset2, DiskOffset3, DiskOffset4)
             ImportOffset = struct.unpack(">L", bytes.fromhex(Bundle[Offset + 112:Offset + 120]))[0]
             ResourceTypeId = Bundle[Offset + 120:Offset + 128].upper()
             ImportCount = struct.unpack(">H", bytes.fromhex(Bundle[Offset + 128:Offset + 132]))[0]
@@ -234,6 +251,8 @@ for BundlePath in BundlePathList:
             UncompressedData1 = zlib.decompressobj().decompress(CompressedData1)
             ResourceType = '_'.join([ResourceTypeId[x:x + 2] for x in range(0, len(ResourceTypeId), 2)])
             if OutputNewFileType == True:
+                ResourceTypeId = ResourceTypeId[6:] + ResourceTypeId[4:6] + ResourceTypeId[2:4] + ResourceTypeId[:2]
+                ResourceType = '_'.join([ResourceTypeId[x:x + 2] for x in range(0, len(ResourceTypeId), 2)])
                 ResourceType = ResourceTypeDict[ResourceType]
             OutputTypePath = ExportPath + "\\" + ResourceType
             if not os.path.exists(OutputTypePath):
@@ -241,16 +260,16 @@ for BundlePath in BundlePathList:
             Output = open(OutputTypePath + "\\" + ResourceId + ".dat", "wb")
             Output.write(UncompressedData1)
             Output.close()
-            if SizeAndAlignmentOnDisk2 != 0:
-                CompressData2 = bytes.fromhex(Bundle[(ResourceDataOffset2 + DiskOffset2) * 2:(ResourceDataOffset2 + SizeAndAlignmentOnDisk2 + DiskOffset2) * 2])
-                DecompressData2 = zlib.decompressobj().decompress(CompressData2)
-                if ResourceType == "00_00_00_05" or ResourceType == "Renderable":
+            if SizeAndAlignmentOnDisk3 != 0:
+                CompressData3 = bytes.fromhex(Bundle[(ResourceDataOffset3 + DiskOffset3) * 2:(ResourceDataOffset3 + SizeAndAlignmentOnDisk3 + DiskOffset3) * 2])
+                DecompressData3 = zlib.decompressobj().decompress(CompressData3)
+                if ResourceType == "05_00_00_00" or ResourceType == "Renderable":
                     Output = open(OutputTypePath + "\\" + ResourceId + "_model.dat", "wb")
-                elif ResourceType == "00_00_00_01" or ResourceType == "Texture":
+                elif ResourceType == "01_00_00_00" or ResourceType == "Texture":
                     Output = open(OutputTypePath + "\\" + ResourceId + "_texture.dat", "wb")
                 else:
                     Output = open(OutputTypePath + "\\" + ResourceId + "_unknow.dat", "wb")
-                Output.write(DecompressData2)
+                Output.write(DecompressData3)
                 Output.close()
         IDs = bytes.fromhex(Bundle[:(ResourceEntriesOffset + ResourceEntriesCount * 72) * 2])
         Output = open(ExportPath + "\\" + "IDs.BIN", "wb")
